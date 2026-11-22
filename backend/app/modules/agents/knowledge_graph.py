@@ -5,14 +5,10 @@ from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.dependencies.auth import get_current_user
+from app.api.v1.knowledge import retrieve_authorized
 from app.models.user import User
 from app.modules.rag.answer_service import OllamaAnswerService
-from app.modules.retrieval.authorization import authorized_department_ids
-from app.modules.retrieval.qdrant_store import QdrantVectorStore
-from app.modules.embeddings.ollama_embeddings import OllamaEmbeddingService
 from app.schemas.knowledge import KnowledgeQuery
-from app.api.v1.knowledge import retrieve_authorized
 
 
 class KnowledgeState(TypedDict, total=False):
@@ -85,14 +81,6 @@ def answer_question(
     reloads chunk text and document ownership from PostgreSQL and applies the
     user's current department memberships before any text reaches the LLM.
     """
-    allowed_department_ids = authorized_department_ids(db, user, department_id)
-    if not allowed_department_ids:
-        return {
-            "answer": "The authorized knowledge base does not contain sufficient evidence.",
-            "authorized_hits": [],
-            "insufficient_evidence": True,
-        }
-
     authorized_hits = retrieve_authorized(
         KnowledgeQuery(query=question, department_id=department_id),
         db,
