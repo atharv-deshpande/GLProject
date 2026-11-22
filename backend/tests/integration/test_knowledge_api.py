@@ -209,3 +209,40 @@ def test_chat_returns_no_citations_when_answer_has_no_valid_source_marker(knowle
 
     assert response.status_code == 200, response.text
     assert response.json()["citations"] == []
+
+
+def test_dashboard_summary_is_scoped_to_authorized_departments(knowledge_context):
+    client, _, _, payments, _, _, _, _ = knowledge_context
+
+    response = client.get("/api/v1/dashboard/summary")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["department_count"] == 1
+    assert body["departments"][0]["name"] == payments.name
+    assert body["total_documents"] == 1
+    assert body["total_chunks"] == 1
+
+
+def test_document_library_never_returns_unassigned_department_documents(knowledge_context):
+    client, _, _, _, _, allowed, forbidden, _ = knowledge_context
+
+    response = client.get("/api/v1/library/documents")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["total"] == 1
+    assert len(body["items"]) == 1
+    assert body["items"][0]["id"] == str(allowed.document_id)
+    assert str(forbidden.document_id) not in response.text
+
+
+def test_document_library_rejects_explicit_unassigned_department(knowledge_context):
+    client, _, _, _, risk, *_ = knowledge_context
+
+    response = client.get(
+        "/api/v1/library/documents",
+        params={"department_id": str(risk.id)},
+    )
+
+    assert response.status_code == 403
