@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import re
 from typing import TypedDict
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
-from app.api.v1.knowledge import retrieve_authorized
+from app.api.v1.knowledge import retrieve_authorized, validate_citation_markers
 from app.models.user import User
 from app.modules.rag.answer_service import OllamaAnswerService
 from app.schemas.knowledge import KnowledgeQuery
@@ -13,19 +14,16 @@ from app.schemas.knowledge import KnowledgeQuery
 
 class KnowledgeState(TypedDict, total=False):
     question: str
-    # These rows must already have been reloaded and authorized by PostgreSQL.
     authorized_hits: list[dict]
     answer: str
+    citations: list[dict]
     insufficient_evidence: bool
 
 
 def _retrieve(state: KnowledgeState) -> KnowledgeState:
-    """Pass through only PostgreSQL-authorized rows; never trust Qdrant payload text."""
+    """Consume only PostgreSQL-authorized rows supplied by the API boundary."""
     hits = state.get("authorized_hits", [])
-    return {
-        "authorized_hits": hits,
-        "insufficient_evidence": not bool(hits),
-    }
+    return {"authorized_hits": hits, "insufficient_evidence": not bool(hits)}
 
 
 def _answer(state: KnowledgeState) -> KnowledgeState:
@@ -33,6 +31,7 @@ def _answer(state: KnowledgeState) -> KnowledgeState:
     if state.get("insufficient_evidence") or not hits:
         return {
             "answer": "The authorized knowledge base does not contain sufficient evidence.",
+            "citations": [],
             "insufficient_evidence": True,
         }
 
@@ -46,8 +45,23 @@ def _answer(state: KnowledgeState) -> KnowledgeState:
         }
         for i, hit in enumerate(hits, 1)
     ]
+    answer = OllamaAnswerService().answer(state["question"], sources)
+    answer, cited_ids = validate_citation_markers(answer, sources)
+    citations = [
+        {
+            "source_id": source["source_id"],
+            "document_id": hit["document_id"],
+            "document_name": hit["document_name"],
+            "page_number": hit.get("page_number"),
+            "section_title": hit.get("section_title"),
+            "chunk_id": hit["chunk_id"],
+        }
+        for source, hit in zip(sources, hits)
+        if source["source_id"] in cited_ids
+    ]
     return {
-        "answer": OllamaAnswerService().answer(state["question"], sources),
+        "answer": answer,
+        "citations": citations,
         "insufficient_evidence": False,
     }
 
@@ -75,11 +89,10 @@ def answer_question(
     department_id: UUID | None = None,
 ) -> dict:
     """
-    Run the agent only after the normal RAG authorization boundary.
+    Run the agent only after normal RAG authorization.
 
-    Qdrant is used only to find candidate chunk IDs. retrieve_authorized then
-    reloads chunk text and document ownership from PostgreSQL and applies the
-    user's current department memberships before any text reaches the LLM.
+    Qdrant contributes candidate IDs only; retrieve_authorized reloads chunk
+    text and document ownership from PostgreSQL and applies live memberships.
     """
     authorized_hits = retrieve_authorized(
         KnowledgeQuery(query=question, department_id=department_id),
@@ -87,8 +100,5 @@ def answer_question(
         user,
     )
     return build_knowledge_graph().invoke(
-        {
-            "question": question,
-            "authorized_hits": authorized_hits,
-        }
+        {"question": question, "authorized_hits": authorized_hits}
     )
