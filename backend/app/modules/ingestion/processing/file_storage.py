@@ -58,7 +58,7 @@ def delete_file(relative_path: str, storage_root: Path) -> None:
     root = storage_root.expanduser().resolve()
     try:
         target.unlink(missing_ok=True)
-        if target.parent != root:
+        if target.parent != root and target.parent.exists():
             target.parent.rmdir()
     except OSError as exc:
         raise FileStorageError("Unable to remove stored document.") from exc
