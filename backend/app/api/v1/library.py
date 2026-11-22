@@ -3,12 +3,12 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
-from app.models.document import Document, DocumentStatus
+from app.models.document import Document
 from app.models.user import Department, User
 from app.modules.retrieval.authorization import authorized_department_ids
 
@@ -52,10 +52,10 @@ def list_documents(
         term = f"%{search.strip()}%"
         query = query.where(Document.original_filename.ilike(term))
 
-    count_query = select(Document.id).where(Document.department_id.in_(allowed_ids))
+    count_query = select(func.count(Document.id)).where(Document.department_id.in_(allowed_ids))
     if search and search.strip():
         count_query = count_query.where(Document.original_filename.ilike(f"%{search.strip()}%"))
-    total = len(db.scalars(count_query).all())
+    total = db.scalar(count_query) or 0
 
     rows = db.execute(
         query.order_by(Document.created_at.desc()).offset(offset).limit(limit)
