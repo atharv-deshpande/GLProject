@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     OLLAMA_EMBEDDING_MODEL: str = "nomic-embed-text"
     OLLAMA_TIMEOUT_SECONDS: float = 120.0
 
-    QDRANT_URL: str = "http://localhost:6333"
+    NEO4J_URI: str = "bolt://localhost:7687"\n    NEO4J_USER: str = "neo4j"\n    NEO4J_PASSWORD: str = ""\n\n    QDRANT_URL: str = "http://localhost:6333"
     QDRANT_API_KEY: str | None = None
     QDRANT_COLLECTION: str = "ekip_document_chunks"
     RAG_TOP_K: int = 5
