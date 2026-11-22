@@ -1,11 +1,7 @@
 from __future__ import annotations
 
-import re
 from dataclasses import dataclass
 from typing import Iterable
-
-
-_CITATION_PATTERN = re.compile(r"\[(S[0-9]+)\]")
 
 
 @dataclass(frozen=True)
@@ -29,21 +25,6 @@ def evaluate_answer(case: GoldenCase, answer: str) -> CaseResult:
     matched = tuple(term for term in case.expected_terms if term.casefold() in normalized)
     missing = tuple(term for term in case.expected_terms if term.casefold() not in normalized)
     return CaseResult(case.case_id, not missing, matched, missing)
-
-
-def evaluate_citations(answer: str, authorized_source_ids: Iterable[str]) -> dict:
-    """Deterministically measure citation-ID validity; not semantic entailment."""
-    allowed = set(authorized_source_ids)
-    cited = _CITATION_PATTERN.findall(answer)
-    invalid = [source_id for source_id in cited if source_id not in allowed]
-    valid = [source_id for source_id in cited if source_id in allowed]
-    return {
-        "citation_count": len(cited),
-        "valid_citation_count": len(valid),
-        "invalid_citation_count": len(invalid),
-        "invalid_source_ids": invalid,
-        "citation_id_precision": len(valid) / len(cited) if cited else 1.0,
-    }
 
 
 def evaluate_batch(cases: Iterable[GoldenCase], answers: dict[str, str]) -> dict:
