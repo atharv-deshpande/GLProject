@@ -41,7 +41,7 @@ def validate_citation_markers(answer: str, sources: list[dict]) -> tuple[str, se
         cited.add(source_id)
         return match.group(0)
 
-    validated_answer = re.sub(r"\\[(S[0-9]+)\\]", replace_marker, answer)
+    validated_answer = re.sub(r"\[(S[0-9]+)\]", replace_marker, answer)
     return validated_answer, cited
 router = APIRouter(tags=["Knowledge"])
 
