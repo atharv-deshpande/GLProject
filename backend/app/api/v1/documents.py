@@ -3,7 +3,7 @@ import logging
 from pathlib import Path
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -27,7 +27,7 @@ from app.modules.ingestion.processing.ingestion_service import process_parsed_do
 from app.modules.ingestion.processing.file_storage import (
     FileStorageError, delete_file, store_file,
 )
-from app.modules.retrieval.qdrant_store import VectorStoreError
+from app.modules.retrieval.qdrant_store import QdrantVectorStore, VectorStoreError\nfrom app.modules.graph.neo4j_store import GraphStoreError, Neo4jGraphStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -225,3 +225,60 @@ def index_document(
         indexed_chunks=count,
         status="indexed",
     )
+
+
+
+@router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_document(
+    document_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Delete source and derived document data.
+
+    External stores are cleaned before PostgreSQL is committed. Each cleanup
+    operation is idempotent, so a failed request can safely be retried. The
+    PostgreSQL record remains available for retry if any derived-store cleanup
+    fails.
+    """
+    document = db.get(Document, document_id)
+    if document is None:
+        # DELETE is idempotent from the caller's perspective.
+        return Response(status_code=status.HTTP_204_NO_CONTENT)
+
+    authorize_department(db, current_user, document.department_id)
+    versions = db.scalars(
+        select(DocumentVersion).where(DocumentVersion.document_id == document_id)
+    ).all()
+
+    try:
+        # Filesystem deletion is safe to repeat; paths are validated beneath root.
+        for version in versions:
+            delete_file(version.storage_path, settings.DOCUMENT_STORAGE_ROOT)
+
+        # Remove vector points even if the collection currently has no points.
+        QdrantVectorStore().delete_document(document_id)
+
+        # Neo4j is an optional derived store; enable only when provisioned.
+        if settings.NEO4J_ENABLED:
+            Neo4jGraphStore().delete_document_graph(str(document_id))
+
+        db.delete(document)
+        db.commit()
+    except (FileStorageError, VectorStoreError, GraphStoreError) as exc:
+        db.rollback()
+        logger.exception("Document lifecycle cleanup failed for %s", document_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Document cleanup is incomplete. Retry the deletion after the dependent service is available.",
+        ) from exc
+    except Exception as exc:
+        db.rollback()
+        logger.exception("Document deletion failed for %s", document_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Document deletion failed. The document record was retained for safe retry.",
+        ) from exc
+
+    return Response(status_code=status.HTTP_204_NO_CONTENT)
