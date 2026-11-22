@@ -59,3 +59,20 @@ class Neo4jGraphStore:
             raise GraphStoreError("Neo4j document graph upsert failed.") from exc
         finally:
             driver.close()
+
+
+    def delete_document_graph(self, document_id: str) -> None:
+        """Idempotently remove a document and its derived chunk nodes."""
+        query = """
+        MATCH (doc:Document {id: $document_id})
+        OPTIONAL MATCH (doc)-[:CONTAINS]->(chunk:Chunk)
+        DETACH DELETE chunk, doc
+        """
+        driver = self._driver()
+        try:
+            with driver.session() as session:
+                session.run(query, {"document_id": str(document_id)}).consume()
+        except Exception as exc:
+            raise GraphStoreError("Neo4j document graph deletion failed.") from exc
+        finally:
+            driver.close()
