@@ -1,6 +1,6 @@
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
@@ -22,7 +22,7 @@ class DepartmentSummary(BaseModel):
 
 class DashboardSummary(BaseModel):
     total_documents: int
-    indexed_documents: int
+    completed_documents: int
     processing_documents: int
     total_chunks: int
     department_count: int
@@ -38,7 +38,7 @@ def get_dashboard_summary(
     if not department_ids:
         return DashboardSummary(
             total_documents=0,
-            indexed_documents=0,
+            completed_documents=0,
             processing_documents=0,
             total_chunks=0,
             department_count=0,
@@ -48,7 +48,7 @@ def get_dashboard_summary(
     total_documents = db.scalar(
         select(func.count(Document.id)).where(Document.department_id.in_(department_ids))
     ) or 0
-    indexed_documents = db.scalar(
+    completed_documents = db.scalar(
         select(func.count(Document.id)).where(
             Document.department_id.in_(department_ids),
             Document.status == DocumentStatus.COMPLETED,
@@ -76,7 +76,7 @@ def get_dashboard_summary(
 
     return DashboardSummary(
         total_documents=total_documents,
-        indexed_documents=indexed_documents,
+        completed_documents=completed_documents,
         processing_documents=processing_documents,
         total_chunks=total_chunks,
         department_count=len(rows),
