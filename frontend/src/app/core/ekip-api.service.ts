@@ -1,7 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, tap } from 'rxjs';
-import { API_BASE_URL, AUTH_AUTH_TOKEN_KEY } from './api-config';
+import { API_BASE_URL, AUTH_TOKEN_KEY } from './api-config';
 
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
 export interface DepartmentSummary { id: string; name: string; document_count: number; }
@@ -21,13 +21,13 @@ export class EkipApiService {
   private readonly base = API_BASE_URL;
 
   get token(): string | null {
-    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(TOKEN_KEY);
+    return typeof sessionStorage === 'undefined' ? null : sessionStorage.getItem(AUTH_TOKEN_KEY);
   }
   get isAuthenticated(): boolean { return !!this.token; }
 
   authenticate(email: string, password: string): Observable<UserProfile> {
     return this.http.post<TokenResponse>(`${this.base}/auth/login`, { email, password }).pipe(
-      tap((result) => sessionStorage.setItem(TOKEN_KEY, result.access_token)),
+      tap((result) => sessionStorage.setItem(AUTH_TOKEN_KEY, result.access_token)),
       switchMap(() => this.me()),
     );
   }
@@ -54,5 +54,5 @@ export class EkipApiService {
   chat(query: string, departmentId: string | null): Observable<ChatResponse> {
     return this.http.post<ChatResponse>(`${this.base}/chat`, { query, department_id: departmentId, top_k: 5 });
   }
-  logout(): void { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(TOKEN_KEY); }
+  logout(): void { if (typeof sessionStorage !== 'undefined') sessionStorage.removeItem(AUTH_TOKEN_KEY); }
 }
