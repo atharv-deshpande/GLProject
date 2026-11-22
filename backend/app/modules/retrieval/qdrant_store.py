@@ -153,3 +153,26 @@ class QdrantVectorStore:
             ]
         except (httpx.HTTPError, KeyError, TypeError, ValueError) as exc:
             raise VectorStoreError("Qdrant semantic search failed.") from exc
+
+
+    def delete_document(self, document_id: UUID) -> None:
+        """Idempotently remove every vector point belonging to a document."""
+        try:
+            response = self.client.post(
+                f"/collections/{self.collection}/points/delete",
+                params={"wait": "true"},
+                json={
+                    "filter": {
+                        "must": [{
+                            "key": "document_id",
+                            "match": {"value": str(document_id)},
+                        }]
+                    }
+                },
+            )
+            if response.status_code == 404:
+                # A missing collection means there are no derived vectors to remove.
+                return
+            response.raise_for_status()
+        except httpx.HTTPError as exc:
+            raise VectorStoreError("Unable to delete document vectors from Qdrant.") from exc
