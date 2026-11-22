@@ -180,3 +180,66 @@ def test_regular_user_cannot_upload_even_with_department_membership(api_context)
         assert response.status_code == 403
     finally:
         app.dependency_overrides[get_current_user] = lambda: api_context[2]
+
+
+
+def test_document_delete_removes_source_file_and_database_rows(api_context, monkeypatch):
+    client, sessions, _, department, storage_root = api_context
+    html = b"<!doctype html><html><body><p>Lifecycle test document.</p></body></html>"
+    uploaded = _upload(client, department.id, "lifecycle.html", html, "text/html")
+    assert uploaded.status_code == 201, uploaded.text
+    document_id = UUID(uploaded.json()["document_id"])
+
+    removed = []
+    monkeypatch.setattr(
+        "app.api.v1.documents.QdrantVectorStore.delete_document",
+        lambda self, value: removed.append(value),
+    )
+
+    response = client.delete(f"/api/v1/documents/{document_id}")
+
+    assert response.status_code == 204
+    assert removed == [document_id]
+    db = sessions()
+    try:
+        assert db.get(Document, document_id) is None
+        assert db.scalar(
+            select(DocumentVersion).where(DocumentVersion.document_id == document_id)
+        ) is None
+        assert db.scalar(
+            select(DocumentChunk).where(DocumentChunk.document_id == document_id)
+        ) is None
+    finally:
+        db.close()
+
+
+def test_document_delete_is_idempotent_for_missing_document(api_context):
+    client, _, _, _, _ = api_context
+    response = client.delete(f"/api/v1/documents/{uuid4()}")
+    assert response.status_code == 204
+
+
+def test_document_delete_retains_database_record_when_vector_cleanup_fails(api_context, monkeypatch):
+    client, sessions, _, department, _ = api_context
+    html = b"<!doctype html><html><body><p>Retry cleanup test.</p></body></html>"
+    uploaded = _upload(client, department.id, "retry.html", html, "text/html")
+    assert uploaded.status_code == 201, uploaded.text
+    document_id = UUID(uploaded.json()["document_id"])
+
+    from app.modules.retrieval.qdrant_store import VectorStoreError
+
+    def fail_cleanup(self, value):
+        raise VectorStoreError("simulated outage")
+
+    monkeypatch.setattr(
+        "app.api.v1.documents.QdrantVectorStore.delete_document",
+        fail_cleanup,
+    )
+    response = client.delete(f"/api/v1/documents/{document_id}")
+    assert response.status_code == 503
+
+    db = sessions()
+    try:
+        assert db.get(Document, document_id) is not None
+    finally:
+        db.close()

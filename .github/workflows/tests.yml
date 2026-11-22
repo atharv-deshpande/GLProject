@@ -2,7 +2,7 @@ name: ekip-ci
 
 on:
   push:
-    branches: [main, "work/day3-day5", "FrontEndChanges"]
+    branches: [main, "work/day3-day5", "FrontEndChanges", "Priroity2Changes"]
   pull_request:
     branches: [main, "FrontEndChanges"]
 
