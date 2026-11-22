@@ -1,9 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, switchMap, tap } from 'rxjs';
-
-export const API_BASE_URL = 'http://localhost:8000/api/v1';
-const TOKEN_KEY = 'ekip_access_token';
+import { API_BASE_URL, AUTH_AUTH_TOKEN_KEY } from './api-config';
 
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
 export interface DepartmentSummary { id: string; name: string; document_count: number; }
