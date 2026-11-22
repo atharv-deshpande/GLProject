@@ -1,11 +1,9 @@
 import { Component, computed, signal } from '@angular/core';
-import { RouterOutlet } from '@angular/router';
 
 type ViewKey = 'overview' | 'knowledge' | 'documents' | 'departments' | 'activity';
 
 @Component({
   selector: 'app-root',
-  imports: [RouterOutlet],
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
