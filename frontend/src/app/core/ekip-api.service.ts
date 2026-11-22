@@ -7,7 +7,7 @@ const TOKEN_KEY = 'ekip_access_token';
 
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
 export interface DepartmentSummary { id: string; name: string; document_count: number; }
-export interface DashboardSummary { total_documents: number; indexed_documents: number; processing_documents: number; total_chunks: number; department_count: number; departments: DepartmentSummary[]; }
+export interface DashboardSummary { total_documents: number; completed_documents: number; processing_documents: number; total_chunks: number; department_count: number; departments: DepartmentSummary[]; }
 export interface LibraryDocument { id: string; name: string; file_type: string; department_id: string; department_name: string; status: string; created_at: string; }
 export interface LibraryResponse { items: LibraryDocument[]; total: number; }
 export interface SearchHit { chunk_id: string; document_id: string; document_name: string; department_id: string; page_number: number | null; section_title: string | null; content: string; score: number; }
