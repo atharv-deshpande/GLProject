@@ -1,0 +1,20 @@
+from fastapi import APIRouter, Depends
+
+from app.dependencies.auth import get_current_user
+from app.models.user import User
+from app.schemas.auth import UserResponse
+
+
+router = APIRouter(prefix="/users", tags=["Users"])
+
+
+@router.get("/me", response_model=UserResponse)
+def get_my_profile(
+    current_user: User = Depends(get_current_user),
+):
+    return UserResponse(
+        id=str(current_user.id),
+        email=current_user.email,
+        role=current_user.role.value,
+        is_active=current_user.is_active,
+    )
