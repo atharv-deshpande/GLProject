@@ -1,6 +1,6 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, switchMap, tap } from 'rxjs';
+import { Observable, catchError, switchMap, tap, throwError } from 'rxjs';
 import { API_BASE_URL, AUTH_TOKEN_KEY } from './api-config';
 
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
@@ -29,6 +29,7 @@ export class EkipApiService {
     return this.http.post<TokenResponse>(`${this.base}/auth/login`, { email, password }).pipe(
       tap((result) => sessionStorage.setItem(AUTH_TOKEN_KEY, result.access_token)),
       switchMap(() => this.me()),
+      catchError((error) => { this.logout(); return throwError(() => error); }),
     );
   }
   me(): Observable<UserProfile> { return this.http.get<UserProfile>(`${this.base}/users/me`); }
