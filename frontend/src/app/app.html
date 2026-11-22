@@ -1,155 +1,60 @@
+@if (!isAuthenticated()) {
+  <main class="login-screen">
+    <section class="login-brand-panel">
+      <a class="brand login-brand" href="#"><span class="brand-mark"><span></span><span></span><span></span><span></span></span><span class="brand-copy"><strong>ekip<span>.</span></strong><small>KNOWLEDGE INTELLIGENCE</small></span></a>
+      <div class="login-message"><span class="eyebrow"><i class="live-dot"></i> ENTERPRISE KNOWLEDGE INTELLIGENCE</span><h1>Your organisation’s<br>knowledge. Connected.</h1><p>Discover trusted answers across banking policies, procedures and institutional knowledge — with evidence you can verify.</p><div class="login-benefits"><span>✳ Department-aware knowledge search</span><span>▤ Secure document intelligence</span><span>✓ Source-grounded answers</span></div></div>
+      <div class="login-panel-foot">© 2026 EKIP · Enterprise Knowledge Intelligence Platform</div>
+    </section>
+    <section class="login-form-panel"><form class="login-form" (ngSubmit)="login()"><div class="login-symbol">✳</div><span class="eyebrow">WELCOME BACK</span><h2>Sign in to EKIP</h2><p>Use your organisation account to continue.</p>
+      @if (error()) { <div class="inline-error" role="alert">{{ error() }}</div> }
+      <label for="login-email">Work email</label><input id="login-email" type="email" name="email" autocomplete="username" required placeholder="you@organisation.com" [ngModel]="loginEmail()" (ngModelChange)="loginEmail.set($event)">
+      <label for="login-password">Password</label><input id="login-password" type="password" name="password" autocomplete="current-password" required placeholder="Enter your password" [ngModel]="loginPassword()" (ngModelChange)="loginPassword.set($event)">
+      <button class="btn btn-primary login-submit" type="submit" [disabled]="loginBusy()">{{ loginBusy() ? 'Signing in…' : 'Sign in securely' }} <span>→</span></button><small class="login-security">Your session uses a short-lived access token and is cleared when you sign out or close this browser tab.</small>
+    </form></section>
+  </main>
+} @else {
 <div class="app-shell">
   <aside class="sidebar" [class.sidebar-open]="mobileNavOpen()">
-    <a class="brand" href="#" (click)="$event.preventDefault(); setView('overview')">
-      <span class="brand-mark"><span></span><span></span><span></span><span></span></span>
-      <span class="brand-copy"><strong>ekip<span>.</span></strong><small>KNOWLEDGE INTELLIGENCE</small></span>
-    </a>
-
-    <div class="workspace-switcher">
-      <div class="workspace-avatar">N</div>
-      <div class="workspace-copy"><strong>Northstar Bank</strong><small>Enterprise workspace</small></div>
-      <span class="switch-chevron">⌄</span>
-    </div>
-
-    <nav class="side-nav" aria-label="Main navigation">
-      <ng-container>
-        <p class="nav-label">WORKSPACE</p>
-        @for (item of navItems.slice(0, 3); track item.key) {
-          <button class="nav-item" [class.active]="activeView() === item.key" (click)="setView(item.key)">
-            <span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span>
-            @if (item.key === 'documents') { <span class="nav-count">434</span> }
-          </button>
-        }
-        <p class="nav-label manage-label">MANAGE</p>
-        @for (item of navItems.slice(3); track item.key) {
-          <button class="nav-item" [class.active]="activeView() === item.key" (click)="setView(item.key)">
-            <span class="nav-icon">{{ item.icon }}</span><span>{{ item.label }}</span>
-          </button>
-        }
-      </ng-container>
+    <a class="brand" href="#" (click)="$event.preventDefault(); setView('overview')"><span class="brand-mark"><span></span><span></span><span></span><span></span></span><span class="brand-copy"><strong>ekip<span>.</span></strong><small>KNOWLEDGE INTELLIGENCE</small></span></a>
+    <div class="workspace-switcher"><div class="workspace-avatar">E</div><div class="workspace-copy"><strong>Enterprise workspace</strong><small>{{ user()?.role }}</small></div></div>
+    <nav class="side-nav" aria-label="Main navigation"><p class="nav-label">WORKSPACE</p>
+      <button class="nav-item" [class.active]="activeView() === 'overview'" (click)="setView('overview')"><span class="nav-icon">◫</span>Overview</button>
+      <button class="nav-item" [class.active]="activeView() === 'knowledge'" (click)="setView('knowledge')"><span class="nav-icon">✳</span>Ask knowledge</button>
+      <button class="nav-item" [class.active]="activeView() === 'documents'" (click)="setView('documents')"><span class="nav-icon">▤</span>Documents</button>
+      <p class="nav-label manage-label">MANAGE</p><button class="nav-item" [class.active]="activeView() === 'departments'" (click)="setView('departments')"><span class="nav-icon">▦</span>Departments</button>
     </nav>
-
-    <div class="sidebar-bottom">
-      <div class="usage-card">
-        <div class="usage-heading"><span>Knowledge index</span><strong>78%</strong></div>
-        <div class="usage-track"><span></span></div>
-        <small>434 of 560 document slots used</small>
-      </div>
-      <button class="help-link" (click)="notice.set('Support and documentation links can be configured here.')"><span>ⓘ</span> Help & documentation <span class="external">↗</span></button>
-      <div class="profile-row">
-        <div class="profile-avatar">AD</div>
-        <div class="profile-copy"><strong>Alex Deshpande</strong><small>Administrator</small></div>
-        <button class="more-button" aria-label="Profile options">···</button>
-      </div>
-    </div>
+    <div class="sidebar-bottom"><div class="usage-card"><div class="usage-heading"><span>Indexed documents</span><strong>{{ dashboard()?.indexed_documents ?? '—' }}</strong></div><small>Live count from your authorised departments</small></div><button class="help-link" (click)="loadWorkspace()">↻ Refresh workspace</button><div class="profile-row"><div class="profile-avatar">{{ user()?.email?.slice(0,1)?.toUpperCase() }}</div><div class="profile-copy"><strong>{{ user()?.email }}</strong><small>{{ user()?.role }}</small></div><button class="more-button" (click)="logout()" aria-label="Sign out" title="Sign out">↪</button></div></div>
   </aside>
-
   <main class="main-panel">
-    <header class="topbar">
-      <button class="mobile-menu" aria-label="Open navigation" (click)="mobileNavOpen.set(!mobileNavOpen())">☰</button>
-      <div class="breadcrumbs"><span>Workspace</span><b>/</b><strong>{{ currentTitle() }}</strong></div>
-      <div class="topbar-actions">
-        <label class="global-search"><span>⌕</span><input aria-label="Search workspace" placeholder="Search anything..." [value]="searchText()" (input)="searchText.set(($any($event.target)).value)"><kbd>⌘ K</kbd></label>
-        <button class="icon-button" aria-label="Notifications" (click)="notice.set('You are all caught up. No new notifications.')">♧<i></i></button>
-        <div class="topbar-divider"></div>
-        <div class="date-label">Sunday, November 22, 2026</div>
-      </div>
-    </header>
-
-    @if (notice()) {
-      <div class="notice" role="status"><span>ⓘ</span>{{ notice() }}<button (click)="clearNotice()" aria-label="Dismiss">×</button></div>
-    }
-
+    <header class="topbar"><button class="mobile-menu" (click)="mobileNavOpen.set(!mobileNavOpen())" aria-label="Toggle navigation">☰</button><div class="breadcrumbs"><span>Workspace</span><b>/</b><strong>{{ currentTitle() }}</strong></div><div class="topbar-actions"><span class="date-label">{{ user()?.email }}</span><div class="topbar-divider"></div><button class="text-action" (click)="logout()">Sign out ↗</button></div></header>
+    @if (error() || notice()) { <div class="notice" [class.notice-error]="!!error()" role="status"><span>{{ error() ? '!' : '✓' }}</span>{{ error() || notice() }}<button (click)="clearMessages()" aria-label="Dismiss">×</button></div> }
     <div class="page-content">
       @if (activeView() === 'overview') {
-        <section class="welcome-row">
-          <div><div class="eyebrow"><span class="live-dot"></span> YOUR KNOWLEDGE WORKSPACE</div><h1>Good morning, Alex <span class="wave">✦</span></h1><p class="page-subtitle">Here’s what’s happening across your organisation today.</p></div>
-          <div class="welcome-actions"><button class="btn btn-secondary" (click)="setView('documents')"><span>＋</span> Add documents</button><button class="btn btn-primary" (click)="setView('knowledge')"><span>✳</span> Ask EKIP</button></div>
-        </section>
-
-        <section class="stats-grid" aria-label="Knowledge workspace metrics">
-          <article class="stat-card"><div class="stat-top"><span class="stat-icon indigo">▤</span><span class="trend positive">↗ 12.8%</span></div><div class="stat-value">434</div><div class="stat-label">Total documents</div><div class="stat-foot">Across 5 departments</div></article>
-          <article class="stat-card"><div class="stat-top"><span class="stat-icon teal">✳</span><span class="trend positive">↗ 8.4%</span></div><div class="stat-value">12,846</div><div class="stat-label">Knowledge chunks</div><div class="stat-foot">Indexed and searchable</div></article>
-          <article class="stat-card"><div class="stat-top"><span class="stat-icon orange">⌁</span><span class="trend positive">↗ 18.2%</span></div><div class="stat-value">2,391</div><div class="stat-label">Queries this month</div><div class="stat-foot">Questions answered by EKIP</div></article>
-          <article class="stat-card"><div class="stat-top"><span class="stat-icon green">◎</span><span class="status-pill">Healthy</span></div><div class="stat-value">98.6<span class="stat-unit">%</span></div><div class="stat-label">Answer confidence</div><div class="stat-foot">Evidence-backed responses</div></article>
-        </section>
-
-        <section class="main-grid">
-          <article class="panel activity-panel">
-            <div class="panel-heading"><div><h2>Knowledge activity</h2><p>Search and usage trends across your workspace</p></div><select aria-label="Activity time period" [value]="selectedPeriod()" (change)="selectedPeriod.set(($any($event.target)).value)"><option>Last 7 days</option><option>Last 30 days</option><option>Last 90 days</option></select></div>
-            <div class="chart-summary"><strong>8,429</strong><span class="trend positive">↗ 14.6%</span><small>queries processed</small></div>
-            <div class="chart-wrap">
-              <div class="y-labels"><span>2.0k</span><span>1.5k</span><span>1.0k</span><span>500</span><span>0</span></div>
-              <svg class="activity-chart" viewBox="0 0 680 190" role="img" aria-label="Illustrative knowledge query activity chart">
-                <defs><linearGradient id="chart-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0%" stop-color="#6575e8" stop-opacity=".2"/><stop offset="100%" stop-color="#6575e8" stop-opacity="0"/></linearGradient></defs>
-                <g class="grid-lines"><path d="M0 15H680M0 54H680M0 93H680M0 132H680M0 171H680"/></g>
-                <path class="area-path" d="M0 140 C35 134 40 104 78 112 S126 89 154 100 S206 61 230 75 S277 83 306 63 S354 86 382 67 S429 37 458 54 S500 72 528 40 S578 47 602 28 S652 41 680 13 L680 171 L0 171Z"/>
-                <path class="line-path" d="M0 140 C35 134 40 104 78 112 S126 89 154 100 S206 61 230 75 S277 83 306 63 S354 86 382 67 S429 37 458 54 S500 72 528 40 S578 47 602 28 S652 41 680 13"/>
-                <circle cx="458" cy="54" r="4"/><circle cx="602" cy="28" r="4"/>
-              </svg>
-            </div>
-            <div class="chart-x-labels"><span>Oct 24</span><span>Oct 29</span><span>Nov 03</span><span>Nov 08</span><span>Nov 13</span><span>Nov 18</span><span>Nov 22</span></div>
-            <div class="chart-legend"><span><i class="legend-dot purple-dot"></i> Knowledge queries</span><span><i class="legend-dot pale-dot"></i> Previous period</span></div>
-          </article>
-
-          <article class="panel department-panel">
-            <div class="panel-heading"><div><h2>Department coverage</h2><p>Document distribution by team</p></div><button class="text-action" (click)="setView('departments')">View all ↗</button></div>
-            <div class="coverage-total"><strong>434</strong><span>documents indexed</span></div>
-            <div class="coverage-bar"><span class="seg-one"></span><span class="seg-two"></span><span class="seg-three"></span><span class="seg-four"></span><span class="seg-five"></span></div>
-            <div class="department-legend">
-              <div><i class="legend-square sq-blue"></i><span>Retail Banking</span><strong>128</strong></div>
-              <div><i class="legend-square sq-teal"></i><span>Payments</span><strong>96</strong></div>
-              <div><i class="legend-square sq-violet"></i><span>Cards</span><strong>84</strong></div>
-              <div><i class="legend-square sq-orange"></i><span>Risk & Compliance</span><strong>72</strong></div>
-              <div><i class="legend-square sq-slate"></i><span>Technology</span><strong>54</strong></div>
-            </div>
-          </article>
-        </section>
-
-        <section class="bottom-grid">
-          <article class="panel documents-panel">
-            <div class="panel-heading"><div><h2>Recently updated</h2><p>The latest documents added to your knowledge base</p></div><button class="text-action" (click)="setView('documents')">View library ↗</button></div>
-            <div class="document-list">
-              @for (doc of documents.slice(0, 3); track doc.name) {
-                <div class="document-row"><div class="file-icon" [class]="'file-icon '+doc.tone">{{ doc.initials }}</div><div class="document-info"><strong>{{ doc.name }}</strong><small>{{ doc.department }} <span>·</span> {{ doc.pages }}</small></div><span class="doc-status" [class.processing]="doc.status === 'Processing'"><i></i>{{ doc.status }}</span><span class="doc-date">{{ doc.date }}</span><button class="row-more" aria-label="More document actions">···</button></div>
-              }
-            </div>
-          </article>
-          <article class="assistant-card">
-            <div class="assistant-orbit"><span>✳</span><i></i><b></b></div><span class="assistant-kicker">MEET YOUR KNOWLEDGE ASSISTANT</span><h2>Answers that know<br>where they came from.</h2><p>Ask questions across your banking policies, processes and documentation — with source-backed answers.</p><button class="assistant-button" (click)="setView('knowledge')">Start a conversation <span>→</span></button><div class="assistant-foot"><span>✦</span> Grounded in your organisation’s knowledge</div>
-          </article>
-        </section>
+        <section class="welcome-row"><div><div class="eyebrow"><span class="live-dot"></span> YOUR AUTHORISED KNOWLEDGE WORKSPACE</div><h1>Welcome back <span class="wave">✦</span></h1><p class="page-subtitle">Live document and indexing metrics for your department access.</p></div><div class="welcome-actions"><button class="btn btn-secondary" (click)="setView('documents')">＋ Document library</button><button class="btn btn-primary" (click)="setView('knowledge')">✳ Ask EKIP</button></div></section>
+        @if (loading()) { <div class="panel loading-panel">Loading your workspace metrics…</div> }
+        <section class="stats-grid"><article class="stat-card"><div class="stat-top"><span class="stat-icon indigo">▤</span></div><div class="stat-value">{{ dashboard()?.total_documents ?? '—' }}</div><div class="stat-label">Total documents</div><div class="stat-foot">Visible within your access scope</div></article><article class="stat-card"><div class="stat-top"><span class="stat-icon teal">✳</span></div><div class="stat-value">{{ dashboard()?.total_chunks ?? '—' }}</div><div class="stat-label">Knowledge chunks</div><div class="stat-foot">Persisted in PostgreSQL</div></article><article class="stat-card"><div class="stat-top"><span class="stat-icon orange">◷</span></div><div class="stat-value">{{ dashboard()?.processing_documents ?? '—' }}</div><div class="stat-label">Processing documents</div><div class="stat-foot">Current document status</div></article><article class="stat-card"><div class="stat-top"><span class="stat-icon green">▦</span></div><div class="stat-value">{{ dashboard()?.department_count ?? '—' }}</div><div class="stat-label">Accessible departments</div><div class="stat-foot">Resolved from server-side permissions</div></article></section>
+        <section class="main-grid"><article class="panel department-panel"><div class="panel-heading"><div><h2>Department coverage</h2><p>Document distribution in your authorised scope</p></div></div><div class="department-legend">@for (dept of departments(); track dept.id) {<div><i class="legend-square sq-blue"></i><span>{{ dept.name }}</span><strong>{{ dept.document_count }}</strong></div>} @empty {<p class="empty-copy">No department memberships are available for this account.</p>}</div></article><article class="assistant-card"><div class="assistant-orbit">✳</div><span class="assistant-kicker">YOUR KNOWLEDGE ASSISTANT</span><h2>Answers grounded<br>in authorised sources.</h2><p>Ask questions across your accessible banking policies and procedures.</p><button class="assistant-button" (click)="setView('knowledge')">Start a conversation →</button></article></section>
+        <section class="panel documents-panel"><div class="panel-heading"><div><h2>Recently added documents</h2><p>Latest records visible to your account</p></div><button class="text-action" (click)="setView('documents')">View library ↗</button></div><div class="document-list">@for (doc of documents().slice(0,4); track doc.id) {<div class="document-row"><div class="file-icon blue">{{ doc.file_type.toUpperCase() }}</div><div class="document-info"><strong>{{ doc.name }}</strong><small>{{ doc.department_name }} · {{ formatDate(doc.created_at) }}</small></div><span class="doc-status">{{ doc.status }}</span></div>} @empty {<p class="empty-copy">No documents found in your authorised departments.</p>}</div></section>
       }
-
       @if (activeView() === 'knowledge') {
-        <section class="page-heading"><div><div class="eyebrow"><span class="live-dot"></span> YOUR BANKING KNOWLEDGE</div><h1>Ask EKIP anything.</h1><p class="page-subtitle">Get clear answers grounded in the documents you’re authorised to access.</p></div></section>
-        <section class="knowledge-layout">
-          <div class="knowledge-main panel">
-            <div class="assistant-intro"><div class="assistant-large-icon">✳</div><h2>What would you like to know?</h2><p>Ask about policies, procedures, products or internal processes.</p></div>
-            <div class="prompt-input"><textarea rows="3" aria-label="Ask a knowledge question" placeholder="e.g. What is the escalation process for a failed UPI transaction?" [value]="question()" (input)="question.set(($any($event.target)).value)" (keydown.enter)="$event.preventDefault(); askQuestion()"></textarea><div class="prompt-bottom"><span>↵ Enter to send</span><button class="btn btn-primary" (click)="askQuestion()">Ask EKIP <span>→</span></button></div></div>
-            @if (answerVisible()) { <div class="answer-preview"><div class="answer-label"><span>✳</span> RESPONSE PREVIEW</div><p>Your question is ready to be sent to the EKIP knowledge API. Once connected, results will include verified document citations from your authorised departments.</p><div class="source-chip">▤ Source citations will appear here</div></div> }
-            <div class="suggestion-heading">TRY ASKING</div><div class="suggestion-list"><button (click)="question.set('What is the process for resolving a UPI transaction dispute?')">How do we resolve a UPI transaction dispute? <span>→</span></button><button (click)="question.set('Summarise the latest KYC document requirements.')">What are the latest KYC requirements? <span>→</span></button><button (click)="question.set('What approvals are required for a retail loan exception?')">Which approvals are needed for a loan exception? <span>→</span></button></div>
-          </div>
-          <aside class="knowledge-aside"><div class="panel"><h3>Search scope</h3><p>Answers are limited to your active department access.</p><label class="field-label">DEPARTMENT</label><select [value]="selectedDepartment()" (change)="setDepartment(($any($event.target)).value)"><option>All departments</option><option>Retail Banking</option><option>Payments</option><option>Cards</option><option>Risk & Compliance</option><option>Technology</option></select><div class="scope-note"><span>▣</span><div><strong>Access controlled</strong><small>Only authorised documents are searched.</small></div></div></div><div class="panel trust-panel"><span class="trust-icon">✓</span><h3>Evidence first</h3><p>EKIP aims to ground responses in approved documents and return source references for verification.</p></div></aside>
-        </section>
+        <section class="page-heading"><div><div class="eyebrow"><span class="live-dot"></span> DEPARTMENT-AWARE RETRIEVAL</div><h1>Ask EKIP anything.</h1><p class="page-subtitle">Your access permissions are enforced by the API before evidence reaches the assistant.</p></div></section>
+        <section class="knowledge-layout"><div class="knowledge-main panel"><div class="assistant-intro"><div class="assistant-large-icon">✳</div><h2>What would you like to know?</h2><p>Answers include source metadata from documents you are authorised to access.</p></div><label class="field-label" for="scope-department">SEARCH DEPARTMENT</label><select id="scope-department" class="scope-select" [value]="selectedDepartmentId()" (change)="setDepartment(($any($event.target)).value)"><option value="">All authorised departments</option>@for (dept of departments(); track dept.id) {<option [value]="dept.id">{{ dept.name }}</option>}</select><div class="prompt-input"><textarea rows="3" aria-label="Ask a knowledge question" placeholder="e.g. What is the escalation process for a failed UPI transaction?" [ngModel]="question()" (ngModelChange)="question.set($event)"></textarea><div class="prompt-bottom"><span>Search and chat use the same server-side department ACL.</span><div><button class="btn btn-secondary" (click)="runSearch()" [disabled]="chatBusy()">Search</button><button class="btn btn-primary" (click)="askQuestion()" [disabled]="chatBusy()">{{ chatBusy() ? 'Thinking…' : 'Ask EKIP →' }}</button></div></div></div>
+          @if (answer(); as result) {<div class="answer-preview"><div class="answer-label">✳ ANSWER @if (result.insufficient_evidence) {<span class="evidence-warning">INSUFFICIENT EVIDENCE</span>}</div><p class="answer-text">{{ result.answer }}</p>@if (result.citations.length) {<div class="citation-heading">VERIFIED SOURCE RECORDS · {{ result.citations.length }}</div>@for (citation of result.citations; track citation.chunk_id) {<article class="citation-card"><div class="citation-marker">{{ citation.source_id }}</div><div><strong>{{ citation.document_name }}</strong><small>Page {{ citation.page_number ?? '—' }} · {{ citation.section_title || 'Section not specified' }}</small><small class="citation-id">Document {{ citation.document_id }} · Chunk {{ citation.chunk_id }}</small></div></article>}}</div> }
+          @if (searchResults().length) {<div class="answer-preview"><div class="answer-label">SEARCH RESULTS · {{ searchResults().length }}</div>@for (hit of searchResults(); track hit.chunk_id) {<article class="search-hit"><strong>{{ hit.document_name }}</strong><small>Page {{ hit.page_number ?? '—' }} · Similarity {{ hit.score.toFixed(3) }}</small><p>{{ hit.content }}</p></article>}</div>}
+          @if (answer() && !answer()!.citations.length && !answer()!.insufficient_evidence) {<p class="empty-copy">No source metadata was returned for this response. Treat it as unverified.</p>}
+          <div class="suggestion-heading">TRY ASKING</div><div class="suggestion-list"><button (click)="question.set('What is the process for resolving a UPI transaction dispute?')">How do we resolve a UPI transaction dispute? →</button><button (click)="question.set('Summarise the latest KYC document requirements.')">What are the latest KYC requirements? →</button></div>
+        </div><aside class="knowledge-aside"><div class="panel"><h3>Access control</h3><p>Department access is derived from your authenticated account. The server rechecks every retrieval result against PostgreSQL.</p><div class="scope-note">✓ <span><strong>Server-enforced permissions</strong><small>Client filters are not treated as authorisation.</small></span></div></div><div class="panel trust-panel"><span class="trust-icon">✓</span><h3>Source verification</h3><p>Citations shown here are document and chunk identifiers returned by the backend after database revalidation.</p></div></aside></section>
       }
-
       @if (activeView() === 'documents') {
-        <section class="page-heading split-heading"><div><div class="eyebrow">KNOWLEDGE MANAGEMENT</div><h1>Document library</h1><p class="page-subtitle">Manage the documents that power your organisation’s knowledge.</p></div><label class="btn btn-primary upload-button">＋ Upload document<input type="file" accept=".pdf,.docx,.html,.htm" (change)="onFileSelected($event)"></label></section>
-        <section class="stats-grid compact-stats"><article class="stat-card"><div class="stat-value">434</div><div class="stat-label">Total documents</div></article><article class="stat-card"><div class="stat-value">421</div><div class="stat-label">Successfully indexed</div></article><article class="stat-card"><div class="stat-value">8</div><div class="stat-label">Processing</div></article><article class="stat-card"><div class="stat-value">5</div><div class="stat-label">Departments</div></article></section>
-        <section class="panel library-panel"><div class="library-toolbar"><div class="toolbar-search"><span>⌕</span><input placeholder="Search documents..." [value]="searchText()" (input)="searchText.set(($any($event.target)).value)"></div><select aria-label="Filter by department" [value]="selectedDepartment()" (change)="setDepartment(($any($event.target)).value)"><option>All departments</option><option>Retail Banking</option><option>Payments</option><option>Cards</option><option>Risk & Compliance</option><option>Technology</option></select></div><div class="table-scroll"><table><thead><tr><th>DOCUMENT</th><th>DEPARTMENT</th><th>LAST UPDATED</th><th>STATUS</th><th></th></tr></thead><tbody>@for (doc of filteredDocuments(); track doc.name) {<tr><td><div class="table-doc"><div class="file-icon" [class]="'file-icon '+doc.tone">{{ doc.initials }}</div><div><strong>{{ doc.name }}</strong><small>{{ doc.type }} · {{ doc.pages }}</small></div></div></td><td>{{ doc.department }}</td><td>{{ doc.date }}</td><td><span class="doc-status" [class.processing]="doc.status === 'Processing'"><i></i>{{ doc.status }}</span></td><td><button class="row-more" aria-label="Document actions">···</button></td></tr>} @empty {<tr><td colspan="5" class="empty-row">No documents match your filters.</td></tr>}</tbody></table></div><div class="table-footer">Showing {{ filteredDocuments().length }} of 434 documents <span>Illustrative workspace data</span></div></section>
+        <section class="page-heading split-heading"><div><div class="eyebrow">KNOWLEDGE MANAGEMENT</div><h1>Document library</h1><p class="page-subtitle">Only documents in your authorised departments are returned.</p></div><label class="btn btn-primary upload-button">＋ Choose file<input type="file" accept=".pdf,.docx,.html,.htm" (change)="onFileSelected($event)"></label></section>
+        <section class="panel library-panel"><div class="library-toolbar"><input class="library-search" placeholder="Search documents..." [ngModel]="searchText()" (ngModelChange)="searchText.set($event); loadDocuments()"><select aria-label="Upload and list department" [value]="selectedDepartmentId()" (change)="setDepartment(($any($event.target)).value)"><option value="">All authorised departments</option>@for (dept of departments(); track dept.id) {<option [value]="dept.id">{{ dept.name }}</option>}</select></div>
+          @if (uploadFile()) {<div class="upload-confirm"><span>{{ uploadFile()?.name }}</span><button class="btn btn-primary" (click)="uploadSelected()" [disabled]="uploadBusy()">{{ uploadBusy() ? 'Uploading…' : 'Upload to selected department' }}</button></div>}
+          <div class="table-scroll"><table><thead><tr><th>DOCUMENT</th><th>DEPARTMENT</th><th>CREATED</th><th>STATUS</th></tr></thead><tbody>@for (doc of filteredDocuments(); track doc.id) {<tr><td><div class="table-doc"><div class="file-icon blue">{{ doc.file_type.toUpperCase() }}</div><strong>{{ doc.name }}</strong></div></td><td>{{ doc.department_name }}</td><td>{{ formatDate(doc.created_at) }}</td><td><span class="doc-status">{{ doc.status }}</span></td></tr>} @empty {<tr><td colspan="4" class="empty-row">No documents found for this search or access scope.</td></tr>}</tbody></table></div><div class="table-footer">Showing {{ filteredDocuments().length }} of {{ documentTotal() }} authorised documents</div></section>
       }
-
-      @if (activeView() === 'departments') {
-        <section class="page-heading"><div><div class="eyebrow">ORGANISATION STRUCTURE</div><h1>Departments</h1><p class="page-subtitle">A clear view of the teams contributing to your knowledge base.</p></div></section>
-        <section class="department-cards">@for (dept of departments; track dept.name) {<article class="panel department-card"><div class="department-card-top"><div class="dept-avatar" [class]="'dept-avatar '+dept.color">{{ dept.initials }}</div><span class="more-button">···</span></div><h2>{{ dept.name }}</h2><p>{{ dept.description }}</p><div class="dept-metrics"><div><strong>{{ dept.count }}</strong><small>Documents</small></div><div><strong>{{ dept.people }}</strong><small>Members</small></div></div><button class="text-action" (click)="setDepartment(dept.name); setView('documents')">Explore documents →</button></article>}</section>
-      }
-
-      @if (activeView() === 'activity') {
-        <section class="page-heading"><div><div class="eyebrow">WORKSPACE MONITORING</div><h1>Activity log</h1><p class="page-subtitle">A transparent view of recent knowledge workspace activity.</p></div></section>
-        <section class="panel library-panel"><div class="activity-feed">@for (entry of [{icon:'▤',title:'Document indexed',detail:'Retail Lending — Credit Policy v4.2',time:'Today · 10:42 AM',tone:'blue'},{icon:'✳',title:'Knowledge query processed',detail:'“What is the current personal loan eligibility?”',time:'Today · 10:18 AM',tone:'mint'},{icon:'＋',title:'Document uploaded',detail:'UPI Dispute Resolution Playbook',time:'Yesterday · 4:18 PM',tone:'violet'},{icon:'↻',title:'Index refresh completed',detail:'Payments department · 96 documents',time:'Yesterday · 3:50 PM',tone:'amber'}]; track entry.title) {<div class="feed-row"><div class="feed-icon" [class]="'feed-icon '+entry.tone">{{ entry.icon }}</div><div><strong>{{ entry.title }}</strong><p>{{ entry.detail }}</p></div><time>{{ entry.time }}</time></div>}</div><div class="demo-note">This timeline contains illustrative entries. Live audit events will be shown after the backend audit endpoint is connected.</div></section>
-      }
-      <footer class="page-footer"><span>© 2026 EKIP · Enterprise Knowledge Intelligence Platform</span><span><i></i> Workspace systems operational</span></footer>
+      @if (activeView() === 'departments') {<section class="page-heading"><div><div class="eyebrow">ORGANISATION STRUCTURE</div><h1>Accessible departments</h1><p class="page-subtitle">Only departments granted to your account are displayed.</p></div></section><section class="department-cards">@for (dept of departments(); track dept.id) {<article class="panel department-card"><div class="dept-avatar">{{ dept.name.slice(0,2).toUpperCase() }}</div><h2>{{ dept.name }}</h2><div class="dept-metrics"><div><strong>{{ dept.document_count }}</strong><small>Documents</small></div></div><button class="text-action" (click)="setDepartment(dept.id); setView('documents')">Explore documents →</button></article>} @empty {<p class="empty-copy">No departments are assigned to this account.</p>}</section>}
+      @if (activeView() === 'activity') {<section class="page-heading"><div><h1>Activity</h1><p class="page-subtitle">Audit activity endpoint is not available in the current backend contract.</p></div></section><section class="panel loading-panel">Live audit events are not yet exposed by the API. No sample activity is shown as real data.</section>}
+      <footer class="page-footer"><span>© 2026 EKIP · Enterprise Knowledge Intelligence Platform</span><span><i></i> Authenticated workspace</span></footer>
     </div>
   </main>
 </div>
+}
