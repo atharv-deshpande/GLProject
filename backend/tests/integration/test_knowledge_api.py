@@ -172,3 +172,40 @@ def test_chat_returns_source_citations_for_grounded_answer(knowledge_context, mo
     assert body["insufficient_evidence"] is False
     assert len(body["citations"]) == 1
     assert body["citations"][0]["chunk_id"] == str(allowed.id)
+
+
+def test_chat_citations_are_limited_to_markers_present_in_answer(knowledge_context, monkeypatch):
+    client, _, _, _, _, allowed, _, vector_store = knowledge_context
+    vector_store.results = [
+        {"chunk_id": str(allowed.id), "score": 0.93, "payload": {}}
+    ]
+
+    class FakeAnswerService:
+        def answer(self, question, sources):
+            return "Use the approved workflow [S1]. Do not trust [S9]."
+
+    monkeypatch.setattr("app.api.v1.knowledge.OllamaAnswerService", FakeAnswerService)
+    response = client.post("/api/v1/chat", json={"query": "payment workflow"})
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["citations"]) == 1
+    assert body["citations"][0]["source_id"] == "S1"
+    assert "[unverified citation S9]" in body["answer"]
+
+
+def test_chat_returns_no_citations_when_answer_has_no_valid_source_marker(knowledge_context, monkeypatch):
+    client, _, _, _, _, allowed, _, vector_store = knowledge_context
+    vector_store.results = [
+        {"chunk_id": str(allowed.id), "score": 0.93, "payload": {}}
+    ]
+
+    class FakeAnswerService:
+        def answer(self, question, sources):
+            return "The available evidence is inconclusive."
+
+    monkeypatch.setattr("app.api.v1.knowledge.OllamaAnswerService", FakeAnswerService)
+    response = client.post("/api/v1/chat", json={"query": "payment workflow"})
+
+    assert response.status_code == 200, response.text
+    assert response.json()["citations"] == []
