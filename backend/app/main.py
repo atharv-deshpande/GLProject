@@ -5,6 +5,8 @@ from app.api.v1.documents import router as documents_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.users import router as users_router
 from app.api.v1.knowledge import router as knowledge_router
+from app.api.v1.dashboard import router as dashboard_router
+from app.api.v1.library import router as library_router
 
 
 app = FastAPI(
@@ -24,6 +26,8 @@ app.add_middleware(
 app.include_router(documents_router, prefix="/api/v1")
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(users_router, prefix="/api/v1")
+app.include_router(dashboard_router, prefix="/api/v1")
+app.include_router(library_router, prefix="/api/v1")
 app.include_router(knowledge_router)
 
 

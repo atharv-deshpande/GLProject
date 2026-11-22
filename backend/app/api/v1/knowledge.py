@@ -1,4 +1,5 @@
 import logging
+import re
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -26,6 +27,22 @@ from app.modules.retrieval.authorization import authorized_department_ids
 from app.modules.retrieval.qdrant_store import QdrantVectorStore, VectorStoreError
 
 logger = logging.getLogger(__name__)
+
+
+def validate_citation_markers(answer: str, sources: list[dict]) -> tuple[str, set[str]]:
+    """Keep only source markers that map to this request's authorized evidence set."""
+    allowed = {source["source_id"] for source in sources}
+    cited: set[str] = set()
+
+    def replace_marker(match: re.Match[str]) -> str:
+        source_id = match.group(1)
+        if source_id not in allowed:
+            return f"[unverified citation {source_id}]"
+        cited.add(source_id)
+        return match.group(0)
+
+    validated_answer = re.sub(r"\[(S[0-9]+)\]", replace_marker, answer)
+    return validated_answer, cited
 router = APIRouter(tags=["Knowledge"])
 
 
@@ -146,6 +163,7 @@ def chat_knowledge(
 
     try:
         answer = OllamaAnswerService().answer(payload.query, sources)
+        answer, cited_source_ids = validate_citation_markers(answer, sources)
     except GenerationError as exc:
         logger.exception("Answer generation failed")
         raise HTTPException(
@@ -163,6 +181,7 @@ def chat_knowledge(
             chunk_id=hit["chunk_id"],
         )
         for source, hit in zip(sources, hits)
+        if source["source_id"] in cited_source_ids
     ]
 
     return ChatResponse(
