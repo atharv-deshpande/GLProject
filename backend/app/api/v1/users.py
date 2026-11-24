@@ -10,6 +10,7 @@ from app.dependencies.auth import get_current_user
 from app.models.user import Department, Role, User, UserDepartment
 from app.modules.auth.password import hash_password
 from app.schemas.auth import UserResponse
+from app.modules.retrieval.authorization import authorized_department_ids
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -26,6 +27,7 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=12, max_length=128)
     role: Role = Role.USER
     department_ids: list[UUID] = Field(default_factory=list)
+    initial_password_change_required: bool = True
 
 
 class UserAdminResponse(BaseModel):
