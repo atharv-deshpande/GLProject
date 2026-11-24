@@ -10,7 +10,6 @@ from app.dependencies.auth import get_current_user
 from app.models.user import Department, Role, User, UserDepartment
 from app.modules.auth.password import hash_password
 from app.schemas.auth import UserResponse
-from app.modules.retrieval.authorization import authorized_department_ids
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
