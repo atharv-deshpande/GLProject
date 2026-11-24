@@ -27,7 +27,8 @@ from app.modules.ingestion.processing.ingestion_service import process_parsed_do
 from app.modules.ingestion.processing.file_storage import (
     FileStorageError, delete_file, store_file,
 )
-from app.modules.retrieval.qdrant_store import QdrantVectorStore, VectorStoreError\nfrom app.modules.graph.neo4j_store import GraphStoreError, Neo4jGraphStore
+from app.modules.retrieval.qdrant_store import QdrantVectorStore, VectorStoreError
+from app.modules.graph.neo4j_store import GraphStoreError, Neo4jGraphStore
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/documents", tags=["Documents"])
