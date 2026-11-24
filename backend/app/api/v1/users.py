@@ -117,6 +117,8 @@ def update_user(
         raise HTTPException(status_code=409, detail="You cannot deactivate your own account.")
 
     if payload.role is not None:
+        if user.id == _.id and payload.role != Role.ADMIN:
+            raise HTTPException(status_code=409, detail="You cannot remove your own administrator role.")
         user.role = payload.role
     if payload.is_active is not None:
         if user.role == Role.ADMIN and payload.is_active is False:
