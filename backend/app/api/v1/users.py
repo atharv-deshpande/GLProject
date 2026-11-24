@@ -26,7 +26,6 @@ class UserCreate(BaseModel):
     password: str = Field(min_length=12, max_length=128)
     role: Role = Role.USER
     department_ids: list[UUID] = Field(default_factory=list)
-    initial_password_change_required: bool = True
 
 
 class UserAdminResponse(BaseModel):
