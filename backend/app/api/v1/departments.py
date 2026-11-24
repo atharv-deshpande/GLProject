@@ -98,6 +98,11 @@ def update_department(
             raise HTTPException(status_code=409, detail="Department name already exists.")
         department.name = name
     if payload.is_active is not None:
+        if payload.is_active is False:
+            from app.models.document import Document
+            linked_documents = db.scalar(select(func.count(Document.id)).where(Document.department_id == department_id)) or 0
+            if linked_documents:
+                raise HTTPException(status_code=409, detail="Cannot deactivate a department that still owns documents. Move or remove its documents first.")
         department.is_active = payload.is_active
     db.commit()
     db.refresh(department)
