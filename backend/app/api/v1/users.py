@@ -117,6 +117,10 @@ def update_user(
         raise HTTPException(status_code=409, detail="You cannot deactivate your own account.")
 
     if payload.role is not None:
+        if user.role == Role.ADMIN and payload.role != Role.ADMIN:
+            active_admins = db.scalar(select(func.count(User.id)).where(User.role == Role.ADMIN, User.is_active.is_(True))) or 0
+            if active_admins <= 1:
+                raise HTTPException(status_code=409, detail="Cannot demote the last active administrator.")
         if user.id == _.id and payload.role != Role.ADMIN:
             raise HTTPException(status_code=409, detail="You cannot remove your own administrator role.")
         user.role = payload.role
