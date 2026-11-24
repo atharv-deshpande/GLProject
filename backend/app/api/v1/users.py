@@ -119,6 +119,10 @@ def update_user(
     if payload.role is not None:
         user.role = payload.role
     if payload.is_active is not None:
+        if user.role == Role.ADMIN and payload.is_active is False:
+            active_admins = db.scalar(select(func.count(User.id)).where(User.role == Role.ADMIN, User.is_active.is_(True))) or 0
+            if active_admins <= 1:
+                raise HTTPException(status_code=409, detail="Cannot deactivate the last active administrator.")
         user.is_active = payload.is_active
     if payload.department_ids is not None:
         departments = db.scalars(select(Department).where(
