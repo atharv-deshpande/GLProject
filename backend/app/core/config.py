@@ -14,6 +14,9 @@ class Settings(BaseSettings):
     JWT_SECRET_KEY: str
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    PROCESSING_JOB_MAX_ATTEMPTS: int = 5
+    PROCESSING_JOB_LEASE_SECONDS: int = 120
+    DOCUMENT_VERSION_RETENTION_COUNT: int = 5
 
     DOCUMENT_STORAGE_ROOT: Path = PROJECT_ROOT / "storage" / "documents"
 
