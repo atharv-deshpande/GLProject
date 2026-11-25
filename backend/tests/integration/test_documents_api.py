@@ -13,7 +13,8 @@ from app.core.config import settings
 from app.core.database import Base, get_db
 from app.dependencies.auth import get_current_user
 from app.main import app
-from app.models.document import Document, DocumentChunk, DocumentVersion
+from app.models.document import Document, DocumentChunk, DocumentVersion, DocumentStatus
+from app.models.operations import ProcessingJob, JobStatus
 from app.models.user import Department, Role, User
 from app.modules.auth.password import hash_password
 from app.modules.ingestion.processing.file_storage import resolve_storage_path
@@ -94,7 +95,7 @@ def test_html_upload_persists_document_version_chunks_and_original(api_context):
 
     assert response.status_code == 201, response.text
     body = response.json()
-    assert body["status"] == "COMPLETED"
+    assert body["status"] == "PENDING"
     assert body["total_chunks"] >= 1
     assert len(body["checksum"]) == 64
 
@@ -112,6 +113,9 @@ def test_html_upload_persists_document_version_chunks_and_original(api_context):
         assert version.version_number == 1
         assert version.checksum == body["checksum"]
         assert chunks
+        assert document.status == DocumentStatus.PENDING
+        jobs = db.query(ProcessingJob).filter(ProcessingJob.document_id == document.id).all()
+        assert len(jobs) == 1 and jobs[0].status == JobStatus.QUEUED
         stored = resolve_storage_path(version.storage_path, storage_root)
         assert stored.read_bytes() == html
     finally:
