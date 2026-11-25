@@ -15,6 +15,9 @@ from app.models.document import (
     Document, DocumentChunk, DocumentStatus, DocumentVersion,
 )
 from app.models.user import Department, User, UserDepartment
+from app.modules.operations.job_queue import enqueue_index_job
+from app.modules.operations.audit import record_audit
+from app.core.observability import request_id_var
 from app.modules.embeddings.indexing_service import (
     DocumentIndexingService, IndexingError,
 )
@@ -130,7 +133,7 @@ async def upload_document(
             file_type=result.file_type,
             department_id=department_id,
             uploaded_by=current_user.id,
-            status=DocumentStatus.COMPLETED,
+            status=DocumentStatus.PENDING,
         )
         db.add(document)
         db.flush()
@@ -162,6 +165,11 @@ async def upload_document(
             for chunk in result.chunks
         ])
 
+        enqueue_index_job(db, document.id, version.id)
+        record_audit(db, action="DOCUMENT_UPLOADED", actor_user_id=current_user.id,
+                     resource_type="document", resource_id=document.id,
+                     request_id=request_id_var.get(), method="POST", path="/api/v1/documents/upload",
+                     details={"department_id": str(department_id), "version": 1, "checksum": checksum})
         db.commit()
         db.refresh(document)
         return DocumentUploadResponse(
@@ -210,23 +218,21 @@ def index_document(
         raise HTTPException(status_code=404, detail="Document not found.")
     authorize_department(db, current_user, document.department_id)
 
-    try:
-        count = DocumentIndexingService().index_document(db, document_id)
-    except IndexingError as exc:
-        raise HTTPException(status_code=404, detail=str(exc)) from exc
-    except (EmbeddingServiceError, VectorStoreError) as exc:
-        logger.exception("Indexing failed for document %s", document_id)
-        raise HTTPException(
-            status_code=503,
-            detail="Document indexing is temporarily unavailable.",
-        ) from exc
-
-    return IndexResponse(
-        document_id=document_id,
-        indexed_chunks=count,
-        status="indexed",
+    version = db.scalar(
+        select(DocumentVersion).where(DocumentVersion.document_id == document_id)
+        .order_by(DocumentVersion.version_number.desc()).limit(1)
     )
-
+    if version is None:
+        raise HTTPException(status_code=409, detail="Document has no persisted version.")
+    job = enqueue_index_job(db, document_id, version.id)
+    document.status = DocumentStatus.PENDING
+    document.indexing_error = None
+    record_audit(db, action="DOCUMENT_INDEX_QUEUED", actor_user_id=current_user.id,
+                 resource_type="document", resource_id=document_id,
+                 request_id=request_id_var.get(), method="POST",
+                 path=f"/api/v1/documents/{document_id}/index")
+    db.commit()
+    return IndexResponse(document_id=document_id, indexed_chunks=0, status=f"queued:{job.id}")
 
 
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
