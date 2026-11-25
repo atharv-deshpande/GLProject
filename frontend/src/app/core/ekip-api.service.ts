@@ -5,6 +5,7 @@ import { API_BASE_URL, AUTH_TOKEN_KEY } from './api-config';
 
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
 export interface DepartmentSummary { id: string; name: string; document_count: number; }
+export interface AdminUser { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; department_ids: string[]; }
 export interface DashboardSummary { total_documents: number; completed_documents: number; processing_documents: number; total_chunks: number; department_count: number; departments: DepartmentSummary[]; }
 export interface LibraryDocument { id: string; name: string; file_type: string; department_id: string; department_name: string; status: string; created_at: string; }
 export interface LibraryResponse { items: LibraryDocument[]; total: number; }
@@ -34,6 +35,13 @@ export class EkipApiService {
   }
   me(): Observable<UserProfile> { return this.http.get<UserProfile>(`${this.base}/users/me`); }
   dashboard(): Observable<DashboardSummary> { return this.http.get<DashboardSummary>(`${this.base}/dashboard/summary`); }
+  users(): Observable<AdminUser[]> { return this.http.get<AdminUser[]>(`${this.base}/users`); }
+  createUser(payload: { email: string; password: string; role: AdminUser['role']; department_ids: string[] }): Observable<AdminUser> {
+    return this.http.post<AdminUser>(`${this.base}/users`, payload);
+  }
+  updateUser(userId: string, payload: { role?: AdminUser['role']; is_active?: boolean; department_ids?: string[] }): Observable<AdminUser> {
+    return this.http.patch<AdminUser>(`${this.base}/users/${userId}`, payload);
+  }
   documents(departmentId: string | null, search: string): Observable<LibraryResponse> {
     let params = new HttpParams().set('limit', '100');
     if (departmentId) params = params.set('department_id', departmentId);
