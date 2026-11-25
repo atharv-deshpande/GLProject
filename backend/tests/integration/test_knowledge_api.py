@@ -312,3 +312,87 @@ def test_regular_user_cannot_manage_user_accounts(knowledge_context):
     client, *_ = knowledge_context
     response = client.get("/api/v1/users")
     assert response.status_code == 403
+
+
+
+def test_user_cannot_index_or_delete_document_from_another_department(knowledge_context):
+    client, _, _, _, _, _, forbidden, _ = knowledge_context
+
+    index_response = client.post(f"/api/v1/documents/{forbidden.document_id}/index", json={})
+    delete_response = client.delete(f"/api/v1/documents/{forbidden.document_id}")
+
+    assert index_response.status_code == 403
+    assert delete_response.status_code == 403
+
+
+def test_admin_can_create_user_with_multiple_department_memberships(knowledge_context):
+    client, sessions, employee, payments, risk, *_ = knowledge_context
+    admin = User(
+        email="admin-provisioner@example.test",
+        password_hash=hash_password("not-used-in-this-test"),
+        role=Role.ADMIN,
+        is_active=True,
+    )
+    db = sessions()
+    try:
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+    finally:
+        db.close()
+
+    app.dependency_overrides[get_current_user] = lambda: admin
+    try:
+        response = client.post(
+            "/api/v1/users",
+            json={
+                "email": "new.employee@example.test",
+                "password": "Initial-User-Password-123",
+                "role": "USER",
+                "department_ids": [str(payments.id), str(risk.id)],
+            },
+        )
+        assert response.status_code == 201, response.text
+        body = response.json()
+        assert set(body["department_ids"]) == {str(payments.id), str(risk.id)}
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: employee
+
+
+def test_department_manager_cannot_list_or_manage_users(knowledge_context):
+    client, sessions, employee, payments, risk, *_ = knowledge_context
+    manager = User(
+        email="manager@example.test",
+        password_hash=hash_password("not-used-in-this-test"),
+        role=Role.DEPARTMENT_MANAGER,
+        is_active=True,
+    )
+    db = sessions()
+    try:
+        db.add(manager)
+        db.flush()
+        db.add(UserDepartment(user_id=manager.id, department_id=payments.id))
+        db.commit()
+        db.refresh(manager)
+    finally:
+        db.close()
+
+    app.dependency_overrides[get_current_user] = lambda: manager
+    try:
+        departments = client.get("/api/v1/departments")
+        users = client.get("/api/v1/users")
+        attempt_manage = client.post(
+            "/api/v1/users",
+            json={
+                "email": "unauthorized@example.test",
+                "password": "Initial-User-Password-123",
+                "role": "USER",
+                "department_ids": [str(payments.id)],
+            },
+        )
+        assert departments.status_code == 200
+        assert [row["id"] for row in departments.json()] == [str(payments.id)]
+        assert users.status_code == 403
+        assert attempt_manage.status_code == 403
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: employee
