@@ -12,6 +12,7 @@ from sqlalchemy import select
 from app.core.database import SessionLocal
 from app.models.document import Document, DocumentStatus, DocumentVersion
 from app.models.operations import ProcessingJob
+from app.core.config import settings
 from app.modules.embeddings.indexing_service import DocumentIndexingService
 from app.modules.operations.job_queue import claim_job, complete_job, fail_job
 
@@ -20,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 def process_one(worker_id: str) -> bool:
     with SessionLocal() as db:
-        job = claim_job(db, worker_id)
+        job = claim_job(db, worker_id, lease_seconds=settings.PROCESSING_JOB_LEASE_SECONDS)
         if job is None:
             return False
         job_id, document_id = job.id, job.document_id
