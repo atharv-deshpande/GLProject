@@ -246,3 +246,69 @@ def test_document_library_rejects_explicit_unassigned_department(knowledge_conte
     )
 
     assert response.status_code == 403
+
+
+
+def test_department_list_returns_only_memberships_for_employee(knowledge_context):
+    client, _, _, payments, _, *_ = knowledge_context
+
+    response = client.get("/api/v1/departments")
+
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert [item["id"] for item in body] == [str(payments.id)]
+    assert all(item["name"] != "Risk" for item in body)
+
+
+def test_department_list_rejects_another_department_id_in_knowledge_and_library(knowledge_context):
+    client, _, _, _, risk, *_ = knowledge_context
+
+    # Supplying an unauthorized department UUID must not broaden access.
+    search = client.post(
+        "/api/v1/search",
+        json={"query": "restricted", "department_id": str(risk.id), "top_k": 20},
+    )
+    chat = client.post(
+        "/api/v1/chat",
+        json={"query": "restricted", "department_id": str(risk.id), "top_k": 20},
+    )
+    library = client.get("/api/v1/library/documents", params={"department_id": str(risk.id)})
+
+    assert search.status_code == 403
+    assert chat.status_code == 403
+    assert library.status_code == 403
+
+
+def test_admin_department_list_includes_all_active_departments(knowledge_context):
+    client, _, employee, payments, risk, *_ = knowledge_context
+    admin = User(
+        email="admin@example.test",
+        password_hash=hash_password("not-used-in-this-test"),
+        role=Role.ADMIN,
+        is_active=True,
+    )
+    # Re-use the fixture database and override its authenticated principal.
+    from app.core.database import get_db
+    session_factory = knowledge_context[1]
+    db = session_factory()
+    try:
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+    finally:
+        db.close()
+
+    app.dependency_overrides[get_current_user] = lambda: admin
+    try:
+        response = client.get("/api/v1/departments")
+        assert response.status_code == 200, response.text
+        returned_ids = {item["id"] for item in response.json()}
+        assert returned_ids == {str(payments.id), str(risk.id)}
+    finally:
+        app.dependency_overrides[get_current_user] = lambda: employee
+
+
+def test_regular_user_cannot_manage_user_accounts(knowledge_context):
+    client, *_ = knowledge_context
+    response = client.get("/api/v1/users")
+    assert response.status_code == 403
