@@ -82,3 +82,18 @@
 .upload-confirm .btn{height:32px;font-size:9px}
 .table-doc{min-width:200px}
 @media(max-width:760px){.login-screen{grid-template-columns:1fr}.login-brand-panel{min-height:310px;padding:25px 7%}.login-message{margin:45px 0 25px}.login-message h1{font-size:34px}.login-benefits{display:none}.login-panel-foot{display:none}.login-form-panel{padding:45px 8%;min-height:480px}}
+
+
+.admin-access-panel{margin-top:22px;padding:20px}
+.admin-access-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:22px}
+.admin-user-form,.admin-membership-editor{display:flex;flex-direction:column;gap:8px;min-width:0}
+.admin-user-form h3,.admin-membership-editor h3,.admin-user-list h3{font-size:12px;color:#35415f;margin:5px 0 8px}
+.admin-user-form label,.admin-membership-editor label{font-size:9px;font-weight:750;color:#68738c;margin-top:7px}
+.admin-user-form input,.admin-user-form select,.admin-membership-editor select{width:100%;min-height:36px;border:1px solid #e2e6ef;border-radius:6px;background:#fff;padding:7px 9px;color:#3d4964;font:10px inherit}
+.admin-user-form select[multiple],.admin-membership-editor select[multiple]{height:auto;min-height:130px}
+.admin-user-form .btn,.admin-membership-editor .btn{align-self:flex-start;margin-top:8px}
+.admin-help{font-size:9px;line-height:1.6;color:#8c96a9}
+.admin-user-list{border-top:1px solid #eef0f5;margin-top:20px;padding-top:13px}
+.admin-user-row{display:grid;grid-template-columns:minmax(180px,2fr) 1fr 1fr 1fr;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #f0f1f6;font-size:9px;color:#68738c}
+.admin-user-row strong{color:#414d69;overflow-wrap:anywhere}
+@media(max-width:760px){.admin-access-grid{grid-template-columns:1fr}.admin-user-row{grid-template-columns:1fr 1fr}.admin-access-panel{padding:14px}}

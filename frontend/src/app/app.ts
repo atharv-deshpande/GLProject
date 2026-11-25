@@ -1,7 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { HttpErrorResponse } from '@angular/common/http';
-import { EkipApiService, UserProfile, DashboardSummary, LibraryDocument, ChatResponse, SearchHit } from './core/ekip-api.service';
+import { EkipApiService, UserProfile, DashboardSummary, LibraryDocument, ChatResponse, SearchHit, AdminUser } from './core/ekip-api.service';
 
 type ViewKey = 'overview' | 'knowledge' | 'documents' | 'departments' | 'activity';
 
@@ -34,6 +34,14 @@ export class App {
   readonly uploadBusy = signal(false);
   readonly chatBusy = signal(false);
   readonly loginBusy = signal(false);
+  readonly adminUsers = signal<AdminUser[]>([]);
+  readonly adminEmail = signal('');
+  readonly adminPassword = signal('');
+  readonly adminRole = signal<AdminUser['role']>('USER');
+  readonly adminDepartmentIds = signal<string[]>([]);
+  readonly selectedAdminUserId = signal('');
+  readonly selectedUserDepartmentIds = signal<string[]>([]);
+  readonly adminBusy = signal(false);
   readonly currentTitle = computed(() => ({
     overview: 'Overview', knowledge: 'Knowledge assistant', documents: 'Document library',
     departments: 'Departments', activity: 'Activity log',
@@ -118,6 +126,7 @@ export class App {
     this.notice.set('');
     this.error.set('');
     if (view === 'documents') this.loadDocuments();
+    if (view === 'departments' && this.user()?.role === 'ADMIN') this.loadAdminUsers();
   }
 
   setDepartment(id: string): void {
@@ -185,6 +194,82 @@ export class App {
     this.api.search(q, this.selectedDepartmentId() || null).subscribe({
       next: (result) => { this.searchResults.set(result.results); this.chatBusy.set(false); },
       error: (err: HttpErrorResponse) => { this.chatBusy.set(false); this.error.set(this.errorMessage(err, 'Knowledge search failed.')); },
+    });
+  }
+
+
+  loadAdminUsers(): void {
+    if (this.user()?.role !== 'ADMIN') return;
+    this.api.users().subscribe({
+      next: (users) => {
+        this.adminUsers.set(users);
+        if (!this.selectedAdminUserId() && users.length) this.selectAdminUser(users[0].id);
+      },
+      error: (err: HttpErrorResponse) => this.error.set(this.errorMessage(err, 'Unable to load users.')),
+    });
+  }
+
+  onNewUserDepartmentsChanged(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.adminDepartmentIds.set(Array.from(select.selectedOptions, option => option.value));
+  }
+
+  onExistingUserDepartmentsChanged(event: Event): void {
+    const select = event.target as HTMLSelectElement;
+    this.selectedUserDepartmentIds.set(Array.from(select.selectedOptions, option => option.value));
+  }
+
+  selectAdminUser(userId: string): void {
+    this.selectedAdminUserId.set(userId);
+    const selected = this.adminUsers().find(user => user.id === userId);
+    this.selectedUserDepartmentIds.set(selected?.department_ids ?? []);
+  }
+
+  createAdminUser(): void {
+    if (this.user()?.role !== 'ADMIN') return;
+    const email = this.adminEmail().trim().toLowerCase();
+    const password = this.adminPassword();
+    if (!email || password.length < 12) {
+      this.error.set('Enter an email and a password of at least 12 characters.');
+      return;
+    }
+    this.adminBusy.set(true);
+    this.api.createUser({
+      email,
+      password,
+      role: this.adminRole(),
+      department_ids: this.adminDepartmentIds(),
+    }).subscribe({
+      next: (created) => {
+        this.adminBusy.set(false);
+        this.adminPassword.set('');
+        this.adminEmail.set('');
+        this.adminDepartmentIds.set([]);
+        this.notice.set(`Created ${created.email} with ${created.department_ids.length} department assignment(s).`);
+        this.loadAdminUsers();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.adminBusy.set(false);
+        this.error.set(this.errorMessage(err, 'Unable to create user.'));
+      },
+    });
+  }
+
+  saveUserDepartments(): void {
+    if (this.user()?.role !== 'ADMIN' || !this.selectedAdminUserId()) return;
+    this.adminBusy.set(true);
+    this.api.updateUser(this.selectedAdminUserId(), {
+      department_ids: this.selectedUserDepartmentIds(),
+    }).subscribe({
+      next: (updated) => {
+        this.adminBusy.set(false);
+        this.notice.set(`Updated department access for ${updated.email}.`);
+        this.loadAdminUsers();
+      },
+      error: (err: HttpErrorResponse) => {
+        this.adminBusy.set(false);
+        this.error.set(this.errorMessage(err, 'Unable to update department access.'));
+      },
     });
   }
 

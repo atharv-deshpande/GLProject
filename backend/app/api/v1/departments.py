@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.core.database import get_db
 from app.dependencies.auth import get_current_user
 from app.models.user import Department, Role, User, UserDepartment
+from app.modules.retrieval.authorization import authorized_department_ids
 
 
 router = APIRouter(prefix="/departments", tags=["Departments"])
@@ -48,9 +49,17 @@ def list_departments(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    query = select(Department)
-    if not include_inactive or getattr(current_user.role, "value", current_user.role) != Role.ADMIN.value:
-        query = query.where(Department.is_active.is_(True))
+    is_admin = getattr(current_user.role, "value", current_user.role) == Role.ADMIN.value
+    if is_admin and include_inactive:
+        query = select(Department)
+    else:
+        allowed_ids = authorized_department_ids(db, current_user)
+        if not allowed_ids:
+            return []
+        query = select(Department).where(
+            Department.id.in_(allowed_ids),
+            Department.is_active.is_(True),
+        )
     return [
         DepartmentResponse(id=row.id, name=row.name, code=row.code, is_active=row.is_active)
         for row in db.scalars(query.order_by(Department.name)).all()

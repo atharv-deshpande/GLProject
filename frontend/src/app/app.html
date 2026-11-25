@@ -51,7 +51,52 @@
           @if (uploadFile()) {<div class="upload-confirm"><span>{{ uploadFile()?.name }}</span><button class="btn btn-primary" (click)="uploadSelected()" [disabled]="uploadBusy()">{{ uploadBusy() ? 'Uploading…' : 'Upload to selected department' }}</button></div>}
           <div class="table-scroll"><table><thead><tr><th>DOCUMENT</th><th>DEPARTMENT</th><th>CREATED</th><th>STATUS</th></tr></thead><tbody>@for (doc of filteredDocuments(); track doc.id) {<tr><td><div class="table-doc"><div class="file-icon blue">{{ doc.file_type.toUpperCase() }}</div><strong>{{ doc.name }}</strong></div></td><td>{{ doc.department_name }}</td><td>{{ formatDate(doc.created_at) }}</td><td><span class="doc-status">{{ doc.status }}</span></td></tr>} @empty {<tr><td colspan="4" class="empty-row">No documents found for this search or access scope.</td></tr>}</tbody></table></div><div class="table-footer">Showing {{ filteredDocuments().length }} of {{ documentTotal() }} authorised documents</div></section>
       }
-      @if (activeView() === 'departments') {<section class="page-heading"><div><div class="eyebrow">ORGANISATION STRUCTURE</div><h1>Accessible departments</h1><p class="page-subtitle">Only departments granted to your account are displayed.</p></div></section><section class="department-cards">@for (dept of departments(); track dept.id) {<article class="panel department-card"><div class="dept-avatar">{{ dept.name.slice(0,2).toUpperCase() }}</div><h2>{{ dept.name }}</h2><div class="dept-metrics"><div><strong>{{ dept.document_count }}</strong><small>Documents</small></div></div><button class="text-action" (click)="setDepartment(dept.id); setView('documents')">Explore documents →</button></article>} @empty {<p class="empty-copy">No departments are assigned to this account.</p>}</section>}
+      @if (activeView() === 'departments') {
+        <section class="page-heading"><div><div class="eyebrow">ORGANISATION STRUCTURE</div><h1>Accessible departments</h1><p class="page-subtitle">Only departments granted to your account are displayed.</p></div></section>
+        <section class="department-cards">@for (dept of departments(); track dept.id) {<article class="panel department-card"><div class="dept-avatar">{{ dept.name.slice(0,2).toUpperCase() }}</div><h2>{{ dept.name }}</h2><div class="dept-metrics"><div><strong>{{ dept.document_count }}</strong><small>Documents</small></div></div><button class="text-action" (click)="setDepartment(dept.id); setView('documents')">Explore documents →</button></article>} @empty {<p class="empty-copy">No departments are assigned to this account.</p>}</section>
+        @if (user()?.role === 'ADMIN') {
+          <section class="panel admin-access-panel">
+            <div class="panel-heading"><div><h2>User and department access</h2><p>Create employees and grant access to one or more departments. Only administrators can manage memberships.</p></div></div>
+            <div class="admin-access-grid">
+              <form class="admin-user-form" (ngSubmit)="createAdminUser()">
+                <h3>Create user</h3>
+                <label for="new-user-email">Work email</label>
+                <input id="new-user-email" type="email" required [ngModel]="adminEmail()" (ngModelChange)="adminEmail.set($event)" name="newUserEmail" placeholder="employee@organisation.com">
+                <label for="new-user-password">Initial password</label>
+                <input id="new-user-password" type="password" required minlength="12" [ngModel]="adminPassword()" (ngModelChange)="adminPassword.set($event)" name="newUserPassword" placeholder="At least 12 characters">
+                <label for="new-user-role">Role</label>
+                <select id="new-user-role" name="newUserRole" [ngModel]="adminRole()" (ngModelChange)="adminRole.set($event)">
+                  <option value="USER">Employee / User</option><option value="DEPARTMENT_MANAGER">Department Manager</option><option value="ADMIN">Administrator</option>
+                </select>
+                <label for="new-user-departments">Department access (select multiple)</label>
+                <select id="new-user-departments" multiple size="6" (change)="onNewUserDepartmentsChanged($event)">
+                  @for (dept of departments(); track dept.id) {<option [value]="dept.id" [selected]="adminDepartmentIds().includes(dept.id)">{{ dept.name }}</option>}
+                </select>
+                <button class="btn btn-primary" type="submit" [disabled]="adminBusy()">{{ adminBusy() ? 'Saving…' : 'Create user' }}</button>
+              </form>
+              <div class="admin-membership-editor">
+                <h3>Manage existing user</h3>
+                <label for="existing-user">Select user</label>
+                <select id="existing-user" [value]="selectedAdminUserId()" (change)="selectAdminUser(($any($event.target)).value)">
+                  @for (account of adminUsers(); track account.id) {<option [value]="account.id">{{ account.email }} · {{ account.role }}</option>}
+                </select>
+                <label for="existing-user-departments">Assigned departments</label>
+                <select id="existing-user-departments" multiple size="8" [disabled]="!selectedAdminUserId()" (change)="onExistingUserDepartmentsChanged($event)">
+                  @for (dept of departments(); track dept.id) {<option [value]="dept.id" [selected]="selectedUserDepartmentIds().includes(dept.id)">{{ dept.name }}</option>}
+                </select>
+                <button class="btn btn-secondary" type="button" (click)="saveUserDepartments()" [disabled]="adminBusy() || !selectedAdminUserId()">Save department access</button>
+                <p class="admin-help">Changing this selection replaces the user's department memberships. Employee and Manager roles do not receive administration privileges.</p>
+              </div>
+            </div>
+            <div class="admin-user-list">
+              <h3>Provisioned accounts</h3>
+              @for (account of adminUsers(); track account.id) {
+                <div class="admin-user-row"><strong>{{ account.email }}</strong><span>{{ account.role }}</span><small>{{ account.department_ids.length }} department(s)</small><span>{{ account.is_active ? 'Active' : 'Inactive' }}</span></div>
+              } @empty {<p class="empty-copy">No users returned.</p>}
+            </div>
+          </section>
+        }
+      }
       @if (activeView() === 'activity') {<section class="page-heading"><div><h1>Activity</h1><p class="page-subtitle">Audit activity endpoint is not available in the current backend contract.</p></div></section><section class="panel loading-panel">Live audit events are not yet exposed by the API. No sample activity is shown as real data.</section>}
       <footer class="page-footer"><span>© 2026 EKIP · Enterprise Knowledge Intelligence Platform</span><span><i></i> Authenticated workspace</span></footer>
     </div>
