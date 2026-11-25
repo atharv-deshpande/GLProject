@@ -70,7 +70,7 @@
                 </select>
                 <label for="new-user-departments">Department access (select multiple)</label>
                 <select id="new-user-departments" multiple size="6" (change)="onNewUserDepartmentsChanged($event)">
-                  @for (dept of departments(); track dept.id) {<option [value]="dept.id">{{ dept.name }}</option>}
+                  @for (dept of departments(); track dept.id) {<option [value]="dept.id" [selected]="adminDepartmentIds().includes(dept.id)">{{ dept.name }}</option>}
                 </select>
                 <button class="btn btn-primary" type="submit" [disabled]="adminBusy()">{{ adminBusy() ? 'Saving…' : 'Create user' }}</button>
               </form>
