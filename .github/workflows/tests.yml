@@ -2,9 +2,9 @@ name: ekip-ci
 
 on:
   push:
-    branches: [main, "work/day3-day5", "FrontEndChanges", "Priroity2Changes"]
+    branches: [main, "work/day3-day5", "FrontEndChanges", "Priroity2Changes", "25nov_pending_work"]
   pull_request:
-    branches: [main, "FrontEndChanges"]
+    branches: [main, "FrontEndChanges", "25nov_pending_work"]
 
 jobs:
   backend-tests:
