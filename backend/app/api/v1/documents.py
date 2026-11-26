@@ -254,7 +254,8 @@ def delete_document(
         # DELETE is idempotent from the caller's perspective.
         return Response(status_code=status.HTTP_204_NO_CONTENT)
 
-    authorize_department(db, current_user, document.department_id)
+    if getattr(current_user.role, "value", current_user.role) != "ADMIN":
+        raise HTTPException(status_code=403, detail="Only administrators can delete documents.")
     versions = db.scalars(
         select(DocumentVersion).where(DocumentVersion.document_id == document_id)
     ).all()

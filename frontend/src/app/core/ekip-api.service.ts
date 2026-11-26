@@ -6,7 +6,7 @@ import { API_BASE_URL, AUTH_TOKEN_KEY } from './api-config';
 export interface UserProfile { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; }
 export interface DepartmentSummary { id: string; name: string; document_count: number; }
 export interface AdminUser { id: string; email: string; role: 'ADMIN' | 'DEPARTMENT_MANAGER' | 'USER'; is_active: boolean; department_ids: string[]; }
-export interface DashboardSummary { total_documents: number; completed_documents: number; processing_documents: number; total_chunks: number; department_count: number; departments: DepartmentSummary[]; }
+export interface DashboardSummary { total_documents: number; completed_documents: number; total_chunks: number; department_count: number; departments: DepartmentSummary[]; }
 export interface LibraryDocument { id: string; name: string; file_type: string; department_id: string; department_name: string; status: string; created_at: string; }
 export interface LibraryResponse { items: LibraryDocument[]; total: number; }
 export interface SearchHit { chunk_id: string; document_id: string; document_name: string; department_id: string; page_number: number | null; section_title: string | null; content: string; score: number; }
@@ -14,7 +14,7 @@ export interface SearchResponse { query: string; results: SearchHit[]; total: nu
 export interface Citation { source_id: string; document_id: string; document_name: string; page_number: number | null; section_title: string | null; chunk_id: string; }
 export interface ChatResponse { query: string; answer: string; citations: Citation[]; insufficient_evidence: boolean; }
 export interface UploadResponse { document_id: string; document_name: string; file_type: string; status: string; file_size: number; total_chunks: number; total_tokens: number; department_id: string; version_number: number; checksum: string; metadata: Record<string, unknown>; }
-interface TokenResponse { access_token: string; token_type: string; }
+export interface ChatHistoryItem { id: string; user_id: string; email: string; prompt: string; answer: string; input_tokens: number; output_tokens: number; duration_ms: number; created_at: string; }\nexport interface ChatUsage { input_tokens?: number; output_tokens?: number; chat_sessions?: number; usage_time_ms?: number; total_input_tokens?: number; total_output_tokens?: number; users?: Array<{email:string;input_tokens:number;output_tokens:number}>; }\ninterface TokenResponse { access_token: string; token_type: string; }
 
 @Injectable({ providedIn: 'root' })
 export class EkipApiService {
@@ -42,7 +42,7 @@ export class EkipApiService {
   updateUser(userId: string, payload: { role?: AdminUser['role']; is_active?: boolean; department_ids?: string[] }): Observable<AdminUser> {
     return this.http.patch<AdminUser>(`${this.base}/users/${userId}`, payload);
   }
-  documents(departmentId: string | null, search: string): Observable<LibraryResponse> {
+  chatHistory(): Observable<ChatHistoryItem[]> { return this.http.get<ChatHistoryItem[]>(`${this.base}/chat/history`); }\n  chatUsage(): Observable<ChatUsage> { return this.http.get<ChatUsage>(`${this.base}/chat/usage`); }\n  documents(departmentId: string | null, search: string): Observable<LibraryResponse> {
     let params = new HttpParams().set('limit', '100');
     if (departmentId) params = params.set('department_id', departmentId);
     if (search.trim()) params = params.set('search', search.trim());
@@ -54,7 +54,7 @@ export class EkipApiService {
     form.append('department_id', departmentId);
     return this.http.post<UploadResponse>(`${this.base}/documents/upload`, form);
   }
-  indexDocument(documentId: string): Observable<{ document_id: string; indexed_chunks: number; status: string }> {
+  deleteDocument(documentId: string): Observable<void> { return this.http.delete<void>(`${this.base}/documents/${documentId}`); }\n  indexDocument(documentId: string): Observable<{ document_id: string; indexed_chunks: number; status: string }> {
     return this.http.post<{ document_id: string; indexed_chunks: number; status: string }>(`${this.base}/documents/${documentId}/index`, {});
   }
   search(query: string, departmentId: string | null): Observable<SearchResponse> {
