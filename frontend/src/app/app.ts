@@ -11,6 +11,9 @@ type ViewKey = 'overview' | 'knowledge' | 'documents' | 'departments' | 'activit
   templateUrl: './app.html',
   styleUrl: './app.scss',
 })
+interface ChatHistoryItem { id: string; user_id: string; email: string; prompt: string; answer: string; input_tokens: number; output_tokens: number; duration_ms: number; created_at: string; }
+interface ChatUsage { input_tokens?: number; output_tokens?: number; chat_sessions?: number; usage_time_ms?: number; total_input_tokens?: number; total_output_tokens?: number; users?: Array<{email:string;input_tokens:number;output_tokens:number}>; }
+
 export class App {
   readonly api = inject(EkipApiService);
   readonly activeView = signal<ViewKey>('overview');
@@ -41,6 +44,8 @@ export class App {
   readonly adminDepartmentIds = signal<string[]>([]);
   readonly selectedAdminUserId = signal('');
   readonly selectedUserDepartmentIds = signal<string[]>([]);
+  readonly chatHistory = signal<ChatHistoryItem[]>([]);
+  readonly usage = signal<ChatUsage | null>(null);
   readonly adminBusy = signal(false);
   readonly currentTitle = computed(() => ({
     overview: 'Overview', knowledge: 'Knowledge assistant', documents: 'Document library',
@@ -229,7 +234,7 @@ export class App {
     if (this.user()?.role !== 'ADMIN') return;
     const email = this.adminEmail().trim().toLowerCase();
     const password = this.adminPassword();
-    if (!email || password.length < 12) {
+    if (!email || password.length < 8) {
       this.error.set('Enter an email and a password of at least 12 characters.');
       return;
     }
@@ -273,7 +278,7 @@ export class App {
     });
   }
 
-  formatDate(value: string): string {
+  loadChatData(): void {\n    this.api.chatHistory().subscribe({next: rows => this.chatHistory.set(rows), error: () => this.chatHistory.set([])});\n    this.api.chatUsage().subscribe({next: usage => this.usage.set(usage), error: () => this.usage.set(null)});\n  }\n\n  formatUsageTime(ms: number): string {\n    const seconds = Math.floor(ms / 1000);\n    return `${Math.floor(seconds / 3600)}h ${Math.floor((seconds % 3600) / 60)}m`;\n  }\n\n  formatDate(value: string): string {
     return new Intl.DateTimeFormat(undefined, { dateStyle: 'medium' }).format(new Date(value));
   }
   errorMessage(err: HttpErrorResponse, fallback: string): string {
