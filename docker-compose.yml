@@ -18,6 +18,21 @@ services:
       timeout: 5s
       retries: 5
 
+  ekip-worker:
+    build:
+      context: ./backend
+    container_name: ekip-worker
+    restart: unless-stopped
+    command: ["python", "-m", "app.modules.operations.worker"]
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+      ollama:
+        condition: service_started
+
   qdrant:
     image: qdrant/qdrant:latest
     container_name: ekip-qdrant

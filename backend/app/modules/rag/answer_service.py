@@ -1,6 +1,12 @@
 from __future__ import annotations
 
 import httpx
+import logging
+import time
+
+from app.core.observability import redact, request_id_var
+
+logger = logging.getLogger(__name__)
 
 from app.core.config import settings
 from app.modules.retrieval.qdrant_store import VectorStoreError
@@ -34,6 +40,8 @@ class OllamaAnswerService:
             "provided source identifiers, for example [S1]. Do not invent citations.\n\n"
             f"QUESTION:\n{question}\n\nSOURCES:\n{source_text}"
         )
+        started = time.perf_counter()
+        logger.info("llm_generation_started", extra={"request_id": request_id_var.get(), "model": self.model, "source_count": len(sources)})
         try:
             response = httpx.post(
                 f"{self.base_url}/api/chat",
@@ -58,10 +66,15 @@ class OllamaAnswerService:
             message = response.json().get("message", {}).get("content", "").strip()
             if not message:
                 raise GenerationError("Ollama returned an empty answer.")
+            logger.info("llm_generation_completed", extra={"request_id": request_id_var.get(), "model": self.model,
+                        "duration_ms": round((time.perf_counter() - started) * 1000, 2),
+                        "prompt_chars": len(prompt), "response_chars": len(message),
+                        "source_count": len(sources), "redacted_question": redact(question)})
             return message
         except GenerationError:
             raise
         except (httpx.HTTPError, ValueError, KeyError) as exc:
+            logger.exception("llm_generation_failed", extra={"request_id": request_id_var.get(), "model": self.model})
             raise GenerationError(
                 f"Ollama chat request failed: {type(exc).__name__}"
             ) from exc

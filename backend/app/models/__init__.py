@@ -5,6 +5,8 @@ from app.models.user import (
     UserDepartment,
 )
 
+from app.models.operations import ProcessingJob, AuditLog, JobStatus
+
 from app.models.document import (
     Document,
     DocumentVersion,
@@ -20,4 +22,7 @@ __all__ = [
     "DocumentVersion",
     "DocumentChunk",
     "DocumentStatus",
+    "ProcessingJob",
+    "AuditLog",
+    "JobStatus",
 ]
