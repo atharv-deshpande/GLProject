@@ -64,7 +64,7 @@ export class App {
     if (this.api.isAuthenticated) {
       this.loading.set(true);
       this.api.me().subscribe({
-        next: (profile) => { this.user.set(profile); this.loadWorkspace(); },
+        next: (profile) => { this.user.set(profile); this.loadWorkspace(); this.loadChatData(); },
         error: () => { this.api.logout(); this.loading.set(false); },
       });
     }
@@ -187,7 +187,7 @@ export class App {
     this.error.set('');
     this.answer.set(null);
     this.api.chat(q, this.selectedDepartmentId() || null).subscribe({
-      next: (result) => { this.answer.set(result); this.chatBusy.set(false); },
+      next: (result) => { this.answer.set(result); this.chatBusy.set(false); this.loadChatData(); },
       error: (err: HttpErrorResponse) => { this.chatBusy.set(false); this.error.set(this.errorMessage(err, 'The knowledge assistant could not complete this request.')); },
     });
   }
