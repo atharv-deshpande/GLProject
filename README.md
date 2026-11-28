@@ -14,8 +14,6 @@ A department-aware banking knowledge platform built with FastAPI, PostgreSQL, Qd
 - **Day 9:** security and testing baseline plus explicit production hardening backlog.
 - **Day 10:** deployment/demo runbooks and acceptance checklist.
 
-See [Day 3–5 runbook](docs/day3-day5-runbook.md), [Day 6–10 plan](docs/day6-day10-plan.md) and [Day 6–10 runbook](docs/day6-day10-runbook.md).
-
 ## Architecture and security
 
 - FastAPI backend and SQLAlchemy.
